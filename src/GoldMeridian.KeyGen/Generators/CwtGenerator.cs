@@ -34,6 +34,15 @@ public sealed class CwtGenerator : IIncrementalGenerator
         string? ExplicitName
     );
 
+    private static readonly SymbolDisplayFormat fully_qualified_minus_global = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions:
+        SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
+        SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+    );
+
     void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(
@@ -90,7 +99,8 @@ public sealed class CwtGenerator : IIncrementalGenerator
     {
         var keyType = link.KeyType;
         var valueType = model.DataType;
-
+        var keyTypeName = keyType.ToDisplayString(fully_qualified_minus_global);
+        var valueTypeName = valueType.ToDisplayString(fully_qualified_minus_global);
         var keyName = keyType.Name;
         var valueName = valueType.Name;
 
@@ -144,7 +154,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
               """;
 
         ctx.AddSource(
-            $"{ns}.{keyName}.{valueName}.{propertyName}.g.cs",
+            $"{keyTypeName}.{valueTypeName}.{propertyName}.g.cs",
             SourceText.From(source, Encoding.UTF8)
         );
     }
