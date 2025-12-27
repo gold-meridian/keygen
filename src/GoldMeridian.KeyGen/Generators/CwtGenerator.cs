@@ -226,6 +226,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
         var accessibility = finalAcc.ToKeyword();
         var ns = valueType.ContainingNamespace.ToDisplayString();
 
+        var cwt = $"ConditionalWeakTable<{keyType.ToDisplayString()}, {valueType.ToDisplayString()}>";
         var source =
             $$"""
               #nullable enable
@@ -236,10 +237,15 @@ public sealed class CwtGenerator : IIncrementalGenerator
 
               {{accessibility}} static class {{SafeTypeName(keyType)}}_{{propertyName}}_CwtExtensions
               {
-                  private static readonly ConditionalWeakTable<{{keyType.ToDisplayString()}}, {{valueType.ToDisplayString()}}> table = [];
-                  
+                  private static readonly {{cwt}} table = [];
+              
                   extension({{keyType.ToDisplayString()}} @this)
                   {
+                      public static {{cwt}} Get{{propertyName}}Table()
+                      {
+                          return table;
+                      }
+                      
                       public {{valueType.ToDisplayString()}}? {{propertyName}}
                       {
                           get => table.TryGetValue(@this, out var value) ? value : null;
