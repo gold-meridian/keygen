@@ -17,6 +17,6 @@ internal static class Program
 {
     public static void Main()
     {
-        
+        _ = new MyData().Extension;
     }
 }
