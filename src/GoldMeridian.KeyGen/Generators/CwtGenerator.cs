@@ -128,21 +128,21 @@ public sealed class CwtGenerator : IIncrementalGenerator
                   
                   extension({{keyType.ToDisplayString()}} @this)
                   {
-                        public {{valueType.ToDisplayString()}}? {{propertyName}}
-                        {
-                            get => table.TryGetValue(@this, out var value) ? value : null;
-                            set
-                            {
-                                if (value is null)
-                                {
-                                    table.Remove(@this);
-                                }
-                                else
-                                {
-                                    table.AddOrUpdate(@this, value);
-                                }
-                            }
-                        }
+                      public {{valueType.ToDisplayString()}}? {{propertyName}}
+                      {
+                          get => table.TryGetValue(@this, out var value) ? value : null;
+                          set
+                          {
+                              if (value is null)
+                              {
+                                  table.Remove(@this);
+                              }
+                              else
+                              {
+                                  table.AddOrUpdate(@this, value);
+                              }
+                          }
+                      }
                   }
               }
               """;
