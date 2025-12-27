@@ -128,7 +128,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
 
               namespace {{ns}};
 
-              {{accessibility}} static class {{keyName}}{{propertyName}}Extensions
+              {{accessibility}} static class {{SafeTypeName(keyType)}}_{{propertyName}}_CwtExtensions
               {
                   private static readonly ConditionalWeakTable<{{keyType.ToDisplayString()}}, {{valueType.ToDisplayString()}}> table = [];
                   
@@ -185,5 +185,17 @@ public sealed class CwtGenerator : IIncrementalGenerator
         }
 
         return acc;
+    }
+
+    private static string SafeTypeName(INamedTypeSymbol type)
+    {
+        var names = new Stack<string>();
+
+        for (_ = 0; type is not null; type = type.ContainingType)
+        {
+            names.Push(type.Name);
+        }
+
+        return string.Join("_", names);
     }
 }
