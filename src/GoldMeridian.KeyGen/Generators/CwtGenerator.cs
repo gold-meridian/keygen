@@ -27,13 +27,6 @@ public sealed class CwtGenerator : IIncrementalGenerator
                         : null
                 )
             );
-
-        public string Accessibility => DataType.DeclaredAccessibility switch
-        {
-            Microsoft.CodeAnalysis.Accessibility.Internal => "internal",
-            Microsoft.CodeAnalysis.Accessibility.Public => "public",
-            _ => "internal", // We could do with a better fallback case.
-        };
     }
 
     private readonly record struct Link(
@@ -111,17 +104,20 @@ public sealed class CwtGenerator : IIncrementalGenerator
             propertyName = valueName;
         }
 
-        var accessibility = model.Accessibility;
+        var accessibility = Accessibility.Min(
+            GetEffectiveAccessibility(valueType),
+            GetEffectiveAccessibility(keyType)
+        ).ToKeyword();
         var ns = valueType.ContainingNamespace.ToDisplayString();
 
         var source =
             $$"""
               #nullable enable
-              
+
               using System.Runtime.CompilerServices;
-              
+
               namespace {{ns}};
-              
+
               {{accessibility}} static class {{keyName}}{{propertyName}}Extensions
               {
                   private static readonly ConditionalWeakTable<{{keyType.ToDisplayString()}}, {{valueType.ToDisplayString()}}> table = [];
@@ -167,5 +163,17 @@ public sealed class CwtGenerator : IIncrementalGenerator
         return attrs.Length == 0
             ? null
             : new Model(dataType, attrs);
+    }
+
+    private static Accessibility GetEffectiveAccessibility(INamedTypeSymbol type)
+    {
+        var acc = type.DeclaredAccessibility;
+
+        for (var parent = type.ContainingType; parent is not null; parent = parent.ContainingType)
+        {
+            acc = Accessibility.Min(acc, parent.DeclaredAccessibility);
+        }
+
+        return acc;
     }
 }

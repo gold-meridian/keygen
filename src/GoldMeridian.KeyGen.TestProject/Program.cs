@@ -2,12 +2,18 @@
 
 namespace GoldMeridian.KeyGen.TestProject;
 
+internal static class A
+{
+    public class Nested { }
+}
+
 public class MyData
 {
     public int A { get; set; }
 }
 
 [ExtensionDataFor<MyData>]
+[ExtensionDataFor<A.Nested>]
 public class MyDataExtension
 {
     public string? B { get; set; }

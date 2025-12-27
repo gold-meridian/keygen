@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
@@ -31,6 +32,41 @@ internal static class Extensions
                 "Microsoft.CodeAnalysis.EmbeddedAttribute",
                 SourceText.From(embedded_attribute_definition, Encoding.UTF8)
             );
+        }
+    }
+
+    extension(Accessibility)
+    {
+        private static int Rank(Accessibility acc)
+        {
+            return acc switch
+            {
+                Accessibility.Public => 5,
+                Accessibility.Internal => 4,
+                Accessibility.Protected => 3,
+                Accessibility.ProtectedOrInternal => 3,
+                Accessibility.ProtectedAndInternal => 2,
+                Accessibility.Private => 1,
+                _ => 0,
+            };
+        }
+
+        public static Accessibility Min(Accessibility a, Accessibility b)
+        {
+            return Accessibility.Rank(a) <= Accessibility.Rank(b) ? a : b;
+        }
+    }
+
+    extension(Accessibility a)
+    {
+        public string ToKeyword()
+        {
+            return a switch
+            {
+                Accessibility.Internal => "internal",
+                Accessibility.Public => "public",
+                _ => "internal", // We could do with a better fallback case.
+            };
         }
     }
 }
