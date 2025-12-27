@@ -211,7 +211,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
         }
 
         var finalAcc = Accessibility.Min(keyAcc, valueAcc);
-        if (finalAcc < valueType.DeclaredAccessibility)
+        if (finalAcc < valueAcc)
         {
             ctx.ReportDiagnostic(
                 Diagnostic.Create(
