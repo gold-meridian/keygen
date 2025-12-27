@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace GoldMeridian.KeyGen;
 
+[Generator]
 public sealed class CwtGenerator : IIncrementalGenerator
 {
     void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
@@ -17,6 +18,8 @@ public sealed class CwtGenerator : IIncrementalGenerator
                     "ExtensionDataForAttribute.g.cs",
                     SourceText.From(
                         """
+                        #nullable enable
+                        
                         using System;
                         using Microsoft.CodeAnalysis;
                         
@@ -24,7 +27,8 @@ public sealed class CwtGenerator : IIncrementalGenerator
                         
                         [Embedded]
                         [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-                        internal sealed class ExtensionDataForAttribute(string? name = null) : Attribute
+                        internal sealed class ExtensionDataForAttribute<TKey>(string? name = null) : Attribute
+                            where TKey : class
                         {
                             public string? Name => name;
                         }
