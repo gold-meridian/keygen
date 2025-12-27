@@ -6,6 +6,10 @@
 
 It is a purely compile-time (dev-time) dependency and only serves to produce workable code that may be trivially consumed within your codebase and by other API consumers.
 
+```
+dotnet add package GoldMeridian.KeyGen
+```
+
 ## example
 
 Given the class:
@@ -67,6 +71,11 @@ namespace Namespace.Of.Extension.Type;
 // Not always `public`; matches the accessibility of the Extension class.
 public static class KeyNameDataNameExtensions
 {
+    extension(KeyName)
+    {
+        public static ConditionalWeakTable<KeyName, DataName> GetDataNameTable();
+    }
+
     extension(KeyName value)
     {
         public ValueName? PropertyName { get; set; }
