@@ -4,7 +4,14 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
-        <IsPackable>false</IsPackable>
+
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+        <PackageId>GoldMeridian.KeyGen</PackageId>
+        <Description>keygen is a source generator for automatically relating objects to extended data through ConditionalWeakTables using C# 14 extension members.</Description>
+        <PackageReadmeFile>..\..\README.md</PackageReadmeFile>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
