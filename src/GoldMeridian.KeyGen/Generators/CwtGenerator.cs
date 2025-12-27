@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using GoldMeridian.KeyGen.Analyzers;
 using GoldMeridian.KeyGen.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -21,6 +22,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
         public IEnumerable<Link> Links =>
             Attributes.Select(
                 a => new Link(
+                    a,
                     (INamedTypeSymbol)a.AttributeClass!.TypeArguments[0], // TKey
                     a.ConstructorArguments.Length == 1                    // string? name
                         ? a.ConstructorArguments[0].Value as string
@@ -30,9 +32,16 @@ public sealed class CwtGenerator : IIncrementalGenerator
     }
 
     private readonly record struct Link(
+        AttributeData Attribute,
         INamedTypeSymbol KeyType,
         string? ExplicitName
-    );
+    )
+    {
+        public Location? GetAttributeLocation()
+        {
+            return Attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation();
+        }
+    }
 
     private static readonly SymbolDisplayFormat fully_qualified_minus_global = new(
         globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
@@ -84,8 +93,65 @@ public sealed class CwtGenerator : IIncrementalGenerator
             extensionCandidates.Collect(),
             static (ctx, models) =>
             {
+                var byKey = new Dictionary<INamedTypeSymbol, Dictionary<string, List<(Model, Link)>>>(SymbolEqualityComparer.Default);
+                var duplicateModels = new HashSet<Model>();
+
+                foreach (var model in models)
+                foreach (var link in model!.Links)
+                {
+                    var propName = ResolvePropertyName(link.KeyType, model.DataType, link.ExplicitName);
+
+                    if (!byKey.TryGetValue(link.KeyType, out var linksByProp))
+                    {
+                        byKey[link.KeyType] = linksByProp = [];
+                    }
+
+                    if (!linksByProp.TryGetValue(propName, out var links))
+                    {
+                        linksByProp[propName] = links = [];
+                    }
+
+                    links.Add((model, link));
+                }
+
+                foreach (var byKeyKvp in byKey)
+                {
+                    var keyType = byKeyKvp.Key;
+                    var linksByProp = byKeyKvp.Value;
+
+                    foreach (var propsKvp in linksByProp)
+                    {
+                        var name = propsKvp.Key;
+                        var entries = propsKvp.Value;
+
+                        if (entries.Count <= 1)
+                        {
+                            continue;
+                        }
+
+                        foreach (var (model, link) in entries)
+                        {
+                            ctx.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    Diagnostics.PropertyNameCollision,
+                                    link.GetAttributeLocation(),
+                                    name,
+                                    keyType.ToDisplayString()
+                                )
+                            );
+
+                            duplicateModels.Add(model);
+                        }
+                    }
+                }
+
                 foreach (var model in models)
                 {
+                    if (duplicateModels.Contains(model!))
+                    {
+                        continue;
+                    }
+                    
                     foreach (var link in model!.Links)
                     {
                         Emit(ctx, model, link);
@@ -101,23 +167,63 @@ public sealed class CwtGenerator : IIncrementalGenerator
         var valueType = model.DataType;
         var keyTypeName = keyType.ToDisplayString(fully_qualified_minus_global);
         var valueTypeName = valueType.ToDisplayString(fully_qualified_minus_global);
-        var keyName = keyType.Name;
-        var valueName = valueType.Name;
+        // var keyName = keyType.Name;
+        // var valueName = valueType.Name;
 
-        var propertyName = link.ExplicitName
-                        ?? (valueName.StartsWith(keyName, StringComparison.Ordinal)
-                               ? valueName[keyName.Length..]
-                               : valueName);
-
-        if (propertyName.Length == 0)
+        var propertyName = ResolvePropertyName(keyType, valueType, link.ExplicitName);
+        if (keyType.GetMembers(propertyName).Any())
         {
-            propertyName = valueName;
+            ctx.ReportDiagnostic(
+                Diagnostic.Create(
+                    Diagnostics.ConflictsWithExistingMember,
+                    link.GetAttributeLocation(),
+                    propertyName,
+                    keyType.ToDisplayString()
+                )
+            );
         }
 
-        var accessibility = Accessibility.Min(
-            GetEffectiveAccessibility(valueType),
-            GetEffectiveAccessibility(keyType)
-        ).ToKeyword();
+        var keyAcc = keyType.GetEffectiveAccessibility();
+        var valueAcc = valueType.GetEffectiveAccessibility();
+
+        if (!keyType.IsUsable())
+        {
+            ctx.ReportDiagnostic(
+                Diagnostic.Create(
+                    Diagnostics.InaccessibleKeyType,
+                    link.GetAttributeLocation(),
+                    keyType.ToDisplayString()
+                )
+            );
+            return;
+        }
+
+        if (!valueType.IsUsable())
+        {
+            ctx.ReportDiagnostic(
+                Diagnostic.Create(
+                    Diagnostics.InaccessibleValueType,
+                    model.DataType.Locations.FirstOrDefault(),
+                    valueType.ToDisplayString()
+                )
+            );
+            return;
+        }
+
+        var finalAcc = Accessibility.Min(keyAcc, valueAcc);
+        if (finalAcc < valueType.DeclaredAccessibility)
+        {
+            ctx.ReportDiagnostic(
+                Diagnostic.Create(
+                    Diagnostics.VisibilityDowngraded,
+                    link.GetAttributeLocation(),
+                    keyType.ToDisplayString(),
+                    finalAcc.ToKeyword()
+                )
+            );
+        }
+
+        var accessibility = finalAcc.ToKeyword();
         var ns = valueType.ContainingNamespace.ToDisplayString();
 
         var source =
@@ -175,18 +281,6 @@ public sealed class CwtGenerator : IIncrementalGenerator
             : new Model(dataType, attrs);
     }
 
-    private static Accessibility GetEffectiveAccessibility(INamedTypeSymbol type)
-    {
-        var acc = type.DeclaredAccessibility;
-
-        for (var parent = type.ContainingType; parent is not null; parent = parent.ContainingType)
-        {
-            acc = Accessibility.Min(acc, parent.DeclaredAccessibility);
-        }
-
-        return acc;
-    }
-
     private static string SafeTypeName(INamedTypeSymbol type)
     {
         var names = new Stack<string>();
@@ -197,5 +291,28 @@ public sealed class CwtGenerator : IIncrementalGenerator
         }
 
         return string.Join("_", names);
+    }
+
+    private static string ResolvePropertyName(
+        INamedTypeSymbol keyType,
+        INamedTypeSymbol valueType,
+        string? explicitName
+    )
+    {
+        if (!string.IsNullOrEmpty(explicitName))
+        {
+            return explicitName!;
+        }
+
+        var keyName = keyType.Name;
+        var valueName = valueType.Name;
+
+        if (!valueName.StartsWith(keyName, StringComparison.Ordinal))
+        {
+            return valueName;
+        }
+
+        var trimmed = valueName[keyName.Length..];
+        return trimmed.Length > 0 ? trimmed : valueName;
     }
 }

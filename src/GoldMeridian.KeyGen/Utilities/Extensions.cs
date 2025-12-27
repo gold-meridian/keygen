@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
@@ -67,6 +66,34 @@ internal static class Extensions
                 Accessibility.Public => "public",
                 _ => "internal", // We could do with a better fallback case.
             };
+        }
+    }
+
+    extension(INamedTypeSymbol type)
+    {
+        public Accessibility GetEffectiveAccessibility()
+        {
+            var acc = type.DeclaredAccessibility;
+
+            for (var parent = type.ContainingType; parent is not null; parent = parent.ContainingType)
+            {
+                acc = Accessibility.Min(acc, parent.DeclaredAccessibility);
+            }
+
+            return acc;
+        }
+
+        public bool IsUsable()
+        {
+            for (; type is not null; type = type.ContainingType)
+            {
+                if (type.DeclaredAccessibility is Accessibility.Private or Accessibility.Protected)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }
