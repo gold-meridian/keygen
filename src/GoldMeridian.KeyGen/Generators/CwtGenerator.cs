@@ -235,7 +235,7 @@ public sealed class CwtGenerator : IIncrementalGenerator
 
               namespace {{ns}};
 
-              {{accessibility}} static class {{SafeTypeName(keyType)}}_{{propertyName}}_CwtExtensions
+              {{accessibility}} static partial class {{SafeTypeName(keyType)}}_{{propertyName}}_CwtExtensions
               {
                   private static readonly {{cwt}} table = [];
               

@@ -9,9 +9,10 @@
 
         <PackageId>GoldMeridian.KeyGen</PackageId>
         <Description>keygen is a source generator for automatically relating objects to extended data through ConditionalWeakTables using C# 14 extension members.</Description>
-        <PackageReadmeFile>..\..\README.md</PackageReadmeFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsPackable>true</IsPackable>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
 
     <ItemGroup>
