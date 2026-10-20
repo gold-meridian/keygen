@@ -20,7 +20,7 @@ internal static class Extensions
     extension(IncrementalGeneratorPostInitializationContext ctx)
     {
         // Takes advantage of the fact modern versions of the compiler will
-        // enforce partiality.  We're stuck on an older verison of the compiler
+        // enforce partiality.  We're stuck on an older version of the compiler
         // for compatibility purposes with other workflows, but we can still
         // mirror this implementation.
         // This only works for C#.
