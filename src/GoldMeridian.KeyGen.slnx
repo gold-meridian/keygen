@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <File Path="Directory.build.props" />
+  </Folder>
+  <Project Path="GoldMeridian.KeyGen/GoldMeridian.KeyGen.csproj" />
+</Solution>
